@@ -59,6 +59,12 @@ All profile completion APIs use `multipart/form-data`:
 - **Doctor:** Medical License & Degree Certificates (PDF/JPEG) - Required  
 - **Admin:** Certificate (PDF/JPEG) - Required
 
+### ✅ Medical Records Upload (NEW)
+- Upload medical records (X-rays, MRI, reports, etc.)
+- Download and manage patient medical records
+- Integrated with Patient Profile API
+- Secure file storage in `uploads/medical-records/`
+
 ### ✅ Admin Approval Workflow
 - Patients and Doctors require admin approval before login
 - New admins require super admin approval
@@ -184,7 +190,37 @@ Response:
 }
 ```
 
-#### 2. Complete Doctor Profile
+#### 2. Get Patient Profile (NEW)
+```http
+GET /api/profile/patient?userId={userId}
+
+Response:
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "dateOfBirth": "1990-01-01",
+  "gender": "Male",
+  "bloodGroup": "O+",
+  "phone": "9876543210",
+  "address": "123 Main St",
+  "city": "New York",
+  "state": "NY",
+  "country": "USA",
+  "pincode": "10001",
+  "idProofPath": "/files/patient-id-proofs/...",
+  "medicalRecords": [
+    {
+      "id": "uuid...",
+      "recordType": "X-Ray",
+      "fileName": "xray.jpg",
+      "uploadDate": "2025-01-12T10:30:00"
+    }
+  ]
+}
+```
+
+#### 3. Complete Doctor Profile
 ```http
 PUT /api/profile/doctor
 Content-Type: multipart/form-data
@@ -216,7 +252,7 @@ Response:
 }
 ```
 
-#### 3. Complete Admin Profile
+#### 4. Complete Admin Profile
 ```http
 PUT /api/admin/profile
 Content-Type: multipart/form-data
@@ -234,6 +270,68 @@ Response:
   "success": true,
   "message": "Profile saved. Waiting for admin verification."
 }
+```
+
+---
+
+### 🏥 Medical Records APIs (NEW)
+
+#### 1. Upload Medical Record
+```http
+POST /api/patient/{patientId}/medical-records
+Content-Type: multipart/form-data
+
+Form Parts:
+- file: (file - PDF/JPEG/PNG)
+- data: {
+    "recordType": "X-Ray",
+    "description": "Chest X-Ray"
+  }
+
+Response:
+{
+  "id": "uuid...",
+  "patientId": 1,
+  "recordType": "X-Ray",
+  "description": "Chest X-Ray",
+  "fileName": "xray.jpg",
+  "fileType": "image/jpeg",
+  "fileSize": 102400,
+  "uploadDate": "2025-01-12T10:30:00"
+}
+```
+
+#### 2. Get Patient Medical Records
+```http
+GET /api/patient/{patientId}/medical-records
+
+Response:
+[
+  {
+    "id": "uuid...",
+    "patientId": 1,
+    "recordType": "X-Ray",
+    "description": "Chest X-Ray",
+    "fileName": "xray.jpg",
+    "fileType": "image/jpeg",
+    "fileSize": 102400,
+    "uploadDate": "2025-01-12T10:30:00"
+  }
+]
+```
+
+#### 3. Download Medical Record
+```http
+GET /api/medical-records/{recordId}/download
+
+Response: File download
+```
+
+#### 4. Delete Medical Record
+```http
+DELETE /api/medical-records/{recordId}
+
+Response: 204 No Content
 ```
 
 ---
@@ -355,7 +453,8 @@ uploads/
 ├── doctor-licenses/
 ├── doctor-certificates/
 ├── doctor-photos/
-└── admin-certificates/
+├── admin-certificates/
+└── medical-records/       (NEW)
 ```
 
 Configure in `application.properties`:
@@ -366,6 +465,7 @@ medvault.upload.doctor-license-dir=${medvault.upload.base-dir}/doctor-licenses
 medvault.upload.doctor-certificate-dir=${medvault.upload.base-dir}/doctor-certificates
 medvault.upload.doctor-photo-dir=${medvault.upload.base-dir}/doctor-photos
 medvault.upload.admin-certificate-dir=${medvault.upload.base-dir}/admin-certificates
+medvault.upload.medical-records-dir=${medvault.upload.base-dir}/medical-records
 ```
 
 ---
@@ -379,6 +479,7 @@ medvault.upload.admin-certificate-dir=${medvault.upload.base-dir}/admin-certific
 - **admin** - Admin-specific data + certificate path
 - **otp** - OTP codes with expiry and used flag
 - **appointment** - Future appointments feature
+- **medical_records** - Patient medical records (NEW)
 
 Run `database_schema.sql` to create all tables.
 
@@ -398,6 +499,7 @@ src/main/java/com/medibook/medibook_backend/
 │   ├── AdminRoleVerificationController.java
 │   ├── AuthController.java          # Auth endpoints
 │   ├── DoctorController.java        # Doctor profile
+│   ├── MedicalRecordController.java # Medical records (NEW)
 │   └── PatientController.java       # Patient profile
 ├── dto/                             # Request/Response DTOs
 ├── entity/                          # JPA Entities
@@ -410,7 +512,8 @@ src/main/java/com/medibook/medibook_backend/
     ├── AdminService.java
     ├── AuthService.java            # Core auth logic
     ├── EmailService.java           # OTP email sending
-    └── FileStorageService.java     # File upload handling
+    ├── FileStorageService.java     # File upload handling
+    └── MedicalRecordService.java   # Medical records service (NEW)
 ```
 
 ---
@@ -488,6 +591,11 @@ FROM users u
 WHERE u.status = 'PENDING';
 ```
 
+**Check Medical Records:**
+```sql
+SELECT * FROM medical_records ORDER BY upload_date DESC;
+```
+
 ---
 
 ## 🚀 Deployment
@@ -505,6 +613,12 @@ WHERE u.status = 'PENDING';
 ---
 
 ## 📝 Recent Updates & Fixes
+
+### ✅ Medical Records Module (Latest)
+- Complete medical records upload/download/delete functionality
+- Integrated with Patient Profile API
+- Unit tests for service and controller
+- File storage in dedicated directory
 
 ### ✅ Hibernate Issues Resolved
 - Implemented `Persistable<Long>` interface in Patient, Doctor, Admin entities
@@ -545,3 +659,4 @@ For issues or questions:
 ---
 
 **Built with ❤️ using Spring Boot 3.5.8**
+
